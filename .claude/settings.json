@@ -11,5 +11,10 @@
         ]
       }
     ]
+  },
+  "statusline": {
+    "enabled": true,
+    "script": "~/.claude/statusline.sh",
+    "refresh_interval": 5
   }
 }

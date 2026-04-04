@@ -209,6 +209,7 @@ export const SHARED_COLUMN_CONFIG_PROPS = {
 
 export const DEFAULT_CONFIG_FORM_LAYOUT: ColumnConfigFormLayout = {
   [GenericDataType.String]: [
+    ['customColumnName'],
     [
       'columnWidth',
       { name: 'horizontalAlign', override: { defaultValue: 'left' } },
@@ -219,6 +220,7 @@ export const DEFAULT_CONFIG_FORM_LAYOUT: ColumnConfigFormLayout = {
     {
       tab: t('Column Settings'),
       children: [
+        ['customColumnName'],
         [
           'columnWidth',
           { name: 'horizontalAlign', override: { defaultValue: 'right' } },
@@ -238,6 +240,7 @@ export const DEFAULT_CONFIG_FORM_LAYOUT: ColumnConfigFormLayout = {
     },
   ],
   [GenericDataType.Temporal]: [
+    ['customColumnName'],
     [
       'columnWidth',
       { name: 'horizontalAlign', override: { defaultValue: 'left' } },
@@ -245,6 +248,7 @@ export const DEFAULT_CONFIG_FORM_LAYOUT: ColumnConfigFormLayout = {
     ['d3TimeFormat'],
   ],
   [GenericDataType.Boolean]: [
+    ['customColumnName'],
     [
       'columnWidth',
       { name: 'horizontalAlign', override: { defaultValue: 'left' } },

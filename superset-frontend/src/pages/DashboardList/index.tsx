@@ -37,10 +37,14 @@ import { OWNER_OPTION_FILTER_PROPS } from 'src/features/owners/OwnerSelectLabel'
 import { useListViewResource, useFavoriteStatus } from 'src/views/CRUD/hooks';
 import {
   CertifiedBadge,
+  Checkbox,
   ConfirmStatusChange,
   DeleteModal,
   FaveStar,
+  Form,
+  Input,
   Loading,
+  Modal,
   PublishedLabel,
   Tooltip,
 } from '@superset-ui/core/components';
@@ -185,6 +189,10 @@ function DashboardList(props: DashboardListProps) {
   );
   const [dashboardToDelete, setDashboardToDelete] =
     useState<CRUDDashboard | null>(null);
+  const [dashboardToDuplicate, setDashboardToDuplicate] =
+    useState<Dashboard | null>(null);
+  const [duplicateTitle, setDuplicateTitle] = useState('');
+  const [duplicateSlices, setDuplicateSlices] = useState(false);
 
   const [importingDashboard, showImportModal] = useState<boolean>(false);
   const [passwordFields, setPasswordFields] = useState<string[]>([]);
@@ -227,6 +235,46 @@ function DashboardList(props: DashboardListProps) {
   const openDashboardEditModal = useCallback((dashboard: Dashboard) => {
     setDashboardToEdit(dashboard);
   }, []);
+
+  const openDuplicateDashboardModal = useCallback((dashboard: Dashboard) => {
+    setDashboardToDuplicate(dashboard);
+    setDuplicateTitle(`${dashboard.dashboard_title} [copy]`);
+    setDuplicateSlices(false);
+  }, []);
+
+  const handleDuplicateDashboard = useCallback(async () => {
+    if (!dashboardToDuplicate) return;
+    try {
+      const { json: dashJson = {} } = await SupersetClient.get({
+        endpoint: `/api/v1/dashboard/${dashboardToDuplicate.id}`,
+      });
+      const result = dashJson?.result || {};
+      const metadata = JSON.parse(result.json_metadata || '{}');
+      if (!metadata.positions) {
+        metadata.positions = JSON.parse(result.position_json || '{}');
+      }
+      await SupersetClient.post({
+        endpoint: `/api/v1/dashboard/${dashboardToDuplicate.id}/copy/`,
+        jsonPayload: {
+          dashboard_title: duplicateTitle,
+          duplicate_slices: duplicateSlices,
+          json_metadata: JSON.stringify(metadata),
+        },
+      });
+      addSuccessToast(t('Dashboard duplicated successfully'));
+      setDashboardToDuplicate(null);
+      refreshData();
+    } catch (_err) {
+      addDangerToast(t('Error duplicating dashboard'));
+    }
+  }, [
+    dashboardToDuplicate,
+    duplicateTitle,
+    duplicateSlices,
+    addSuccessToast,
+    addDangerToast,
+    refreshData,
+  ]);
 
   function handleDashboardEdit(edits: Dashboard) {
     return SupersetClient.get({
@@ -437,9 +485,26 @@ function DashboardList(props: DashboardListProps) {
             );
           const handleEdit = () => openDashboardEditModal(original);
           const handleExport = () => handleBulkDashboardExport([original]);
+          const handleDuplicate = () => openDuplicateDashboardModal(original);
 
           return (
             <Actions className="actions">
+              {canEdit && (
+                <Tooltip
+                  id="duplicate-action-tooltip"
+                  title={t('Duplicate')}
+                  placement="bottom"
+                >
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    className="action-button"
+                    onClick={handleDuplicate}
+                  >
+                    <Icons.CopyOutlined iconSize="l" />
+                  </span>
+                </Tooltip>
+              )}
               {canEdit && (
                 <Tooltip
                   id="edit-action-tooltip"
@@ -530,6 +595,7 @@ function DashboardList(props: DashboardListProps) {
       addDangerToast,
       handleBulkDashboardExport,
       openDashboardEditModal,
+      openDuplicateDashboardModal,
     ],
   );
 
@@ -775,6 +841,32 @@ function DashboardList(props: DashboardListProps) {
                   onHide={() => setDashboardToEdit(null)}
                   onSubmit={handleDashboardEdit}
                 />
+              )}
+              {dashboardToDuplicate && (
+                <Modal
+                  title={t('Duplicate dashboard')}
+                  show
+                  onHide={() => setDashboardToDuplicate(null)}
+                  onHandledPrimaryAction={handleDuplicateDashboard}
+                  primaryButtonName={t('Duplicate')}
+                >
+                  <Form layout="vertical">
+                    <Form.Item label={t('Title')}>
+                      <Input
+                        value={duplicateTitle}
+                        onChange={e => setDuplicateTitle(e.target.value)}
+                      />
+                    </Form.Item>
+                    <Form.Item>
+                      <Checkbox
+                        checked={duplicateSlices}
+                        onChange={() => setDuplicateSlices(prev => !prev)}
+                      >
+                        {t('also copy (duplicate) charts')}
+                      </Checkbox>
+                    </Form.Item>
+                  </Form>
+                </Modal>
               )}
               {dashboardToDelete && (
                 <DeleteModal

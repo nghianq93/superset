@@ -245,6 +245,24 @@ function ChartList(props: ChartListProps) {
     addSuccessToast(t('Chart imported'));
   };
 
+  const handleChartDuplicate = useCallback(
+    async (chart: Chart) => {
+      try {
+        await SupersetClient.post({
+          endpoint: `/api/v1/chart/${chart.id}/copy/`,
+          jsonPayload: {
+            slice_name: `Copy of ${chart.slice_name}`,
+          },
+        });
+        addSuccessToast(t('Chart duplicated successfully'));
+        refreshData();
+      } catch (_err) {
+        addDangerToast(t('Error duplicating chart'));
+      }
+    },
+    [addSuccessToast, addDangerToast, refreshData],
+  );
+
   const canCreate = hasPerm('can_write');
   const canEdit = hasPerm('can_write');
   const canDelete = hasPerm('can_write');
@@ -508,12 +526,29 @@ function ChartList(props: ChartListProps) {
             );
           const openEditModal = () => openChartEditModal(original);
           const handleExport = () => handleBulkChartExport([original]);
+          const handleDuplicate = () => handleChartDuplicate(original);
           if (!canEdit && !canDelete && !canExport) {
             return null;
           }
 
           return (
             <StyledActions className="actions">
+              {canEdit && (
+                <Tooltip
+                  id="duplicate-action-tooltip"
+                  title={t('Duplicate')}
+                  placement="bottom"
+                >
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    className="action-button"
+                    onClick={handleDuplicate}
+                  >
+                    <Icons.CopyOutlined iconSize="l" />
+                  </span>
+                </Tooltip>
+              )}
               {canEdit && (
                 <Tooltip
                   id="edit-action-tooltip"
@@ -602,6 +637,7 @@ function ChartList(props: ChartListProps) {
       addDangerToast,
       handleBulkChartExport,
       openChartEditModal,
+      handleChartDuplicate,
     ],
   );
 

@@ -86,6 +86,17 @@ class ChartDAO(BaseDAO[Slice]):
                 )
             )
 
+    @classmethod
+    def copy_chart(cls, original_chart: Slice, title: str) -> Slice:
+        from flask import g  # noqa: PLC0415
+
+        new_chart = original_chart.clone()
+        new_chart.slice_name = title
+        new_chart.owners = [g.user] if g.user else []
+        db.session.add(new_chart)
+        db.session.commit()
+        return new_chart
+
     @staticmethod
     def remove_favorite(chart: Slice) -> None:
         fav = (

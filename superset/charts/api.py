@@ -130,6 +130,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         "screenshot",
         "cache_screenshot",
         "warm_up_cache",
+        "copy_chart",
     }
     class_permission_name = "Chart"
     method_permission_name = MODEL_API_RW_METHOD_PERMISSION_MAP
@@ -567,6 +568,72 @@ class ChartRestApi(BaseSupersetModelRestApi):
             return self.response_403()
         except ChartDeleteFailedError as ex:
             return self.response_422(message=str(ex))
+
+    @expose("/<pk>/copy/", methods=("POST",))
+    @protect()
+    @safe
+    @statsd_metrics
+    @event_logger.log_this_with_context(
+        action=lambda self, *args, **kwargs: f"{self.__class__.__name__}.copy_chart",
+        log_to_statsd=False,
+    )
+    def copy_chart(self, pk: int) -> Response:
+        """Copy a chart.
+        ---
+        post:
+          summary: Copy a chart
+          parameters:
+          - in: path
+            schema:
+              type: integer
+            name: pk
+            description: The chart id
+          requestBody:
+            required: false
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    slice_name:
+                      type: string
+          responses:
+            200:
+              description: Id of the new chart
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+            401:
+              $ref: '#/components/responses/401'
+            403:
+              $ref: '#/components/responses/403'
+            404:
+              $ref: '#/components/responses/404'
+            422:
+              $ref: '#/components/responses/422'
+            500:
+              $ref: '#/components/responses/500'
+        """
+        chart = self.datamodel.get(pk, self._base_filters)
+        if not chart:
+            return self.response_404()
+        data = request.json or {}
+        title = data.get("slice_name") or f"Copy of {chart.slice_name}"
+        try:
+            new_chart = ChartDAO.copy_chart(chart, title)
+        except Exception as ex:
+            logger.error(
+                "Error copying chart %s: %s",
+                self.__class__.__name__,
+                str(ex),
+                exc_info=True,
+            )
+            return self.response_422(message=str(ex))
+        return self.response(200, result={"id": new_chart.id})
 
     @expose("/<pk>/cache_screenshot/", methods=("GET",))
     @protect()
